@@ -1,0 +1,61 @@
+name: Version
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump level (patch, minor, major)'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    name: Bump Version & Create Release Tag
+    runs-on: ubuntu-latest
+    # Avoid infinite loop if the workflow commits back
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    outputs:
+      new_version: ${{ steps.bump.outputs.new_version }}
+      new_tag: ${{ steps.bump.outputs.new_tag }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Configure Git User
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump Version
+        id: bump
+        run: |
+          BUMP_TYPE="${{ github.event.inputs.bump || 'patch' }}"
+          npm version $BUMP_TYPE --no-git-tag-version
+          NEW_VER=$(node -p "require('./package.json').version")
+          TAG="v$NEW_VER"
+          echo "new_version=$NEW_VER" >> $GITHUB_OUTPUT
+          echo "new_tag=$TAG" >> $GITHUB_OUTPUT
+
+          git add package.json package-lock.json
+          git commit -m "chore(release): bump version to $NEW_VER [skip ci]" || echo "No changes to commit"
+          git tag "$TAG"
+          git push origin main --tags
+
