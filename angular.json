@@ -65,21 +65,17 @@
           "builder": "@angular/build:extract-i18n"
         },
         "test": {
-          "builder": "@angular/build:karma",
+          "builder": "@angular/build:unit-test",
           "options": {
             "tsConfig": "tsconfig.spec.json",
-            "assets": [
-              {
-                "glob": "**/*",
-                "input": "public"
-              }
-            ],
-            "styles": [
-              "src/styles.css"
-            ]
+            "buildTarget": "four-thousand-weeks:build:development",
+            "runner": "vitest"
           }
         }
       }
     }
+  },
+  "cli": {
+    "analytics": false
   }
 }
