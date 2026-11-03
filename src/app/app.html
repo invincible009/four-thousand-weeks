@@ -1,38 +1,169 @@
+<div class="page-container">
+  <!-- Top Header -->
+  <header class="header">
+    <div class="tagline">
+      <svg class="clock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+      <span>A LIFETIME, MADE VISIBLE</span>
+    </div>
 
-<div class="container">
-  <h1>four thousand weeks</h1>
+    <h1 class="title">
+      four thousand <em>weeks</em>
+    </h1>
 
-  <label for="dob">Date of birth</label>
-  <input
-    id="dob"
-    type="date"
-    (change)="updateWeeks($event)"
-    class="border rounded px-2 py-1"
-    />
-    <small>MM/DD/YYYY</small>
+    <p class="subtitle">
+      Your life is not an endless expanse. It's a finite collection of tiny,
+      meaningful moments.
+    </p>
 
-    <span>Weeks {{ totalWeeks }} </span>
+    <!-- Date of birth input pill -->
+    <div class="dob-picker-wrapper">
+      <label for="dob-input" class="dob-label">Date of birth</label>
+      <input
+        id="dob-input"
+        type="date"
+        [value]="birthDateString"
+        (change)="onDobChange($event)"
+        class="dob-input"
+      />
+      <svg class="calendar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="16" y1="2" x2="16" y2="6"></line>
+        <line x1="8" y1="2" x2="8" y2="6"></line>
+        <line x1="3" y1="10" x2="21" y2="10"></line>
+      </svg>
+    </div>
+  </header>
 
+  <!-- Legend & Live Stats -->
+  <div class="meta-bar">
+    <div class="legend">
+      <div class="legend-item">
+        <span class="legend-dot lived"></span>
+        <span>lived</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot this-week"></span>
+        <span>this week</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot ahead"></span>
+        <span>ahead</span>
+      </div>
+      <div class="stats-text">
+        <strong>{{ formattedLivedWeeks }}</strong> weeks in
+      </div>
+    </div>
   </div>
 
-  @for (week of weeks; track week; let i = $index) {
-    <section class="section">
-      @if (i == 1000 || i == 2000 || i == 3000) {
-        <div>
-          <p>{{ i }}</p>
-        </div>
+  <!-- Grid Card Container -->
+  <main class="grid-card" #gridContainer>
+    <div class="grid-header">
+      <span class="age-label">AGE</span>
+      <span class="hint-label">click any week to see its seven days</span>
+    </div>
+
+    <!-- 52 columns x 80 rows week grid -->
+    <div class="weeks-grid">
+      @for (w of weeks; track w.index) {
+        <button
+          type="button"
+          class="week-box"
+          [attr.data-week-index]="w.index"
+          [class.lived]="w.status === 'lived'"
+          [class.current]="w.status === 'current'"
+          [class.ahead]="w.status === 'ahead'"
+          [class.selected]="selectedWeekIndex === w.index"
+          (click)="selectWeek(w.index, $event)"
+          [attr.aria-label]="'Week ' + w.index"
+        ></button>
       }
-      <svg width="22" height="22">
-        <rect
-          x="0.625"
-          y="0.625"
-          rx="2.5"
-          ry="2.5"
-          width="18.75"
-          height="18.75"
-          [style.fill]="week.active ? '#3f51b5' : '#e0e0e0'"
-          />
-        </svg>
-      </section>
+    </div>
+
+    <!-- Popover 7-day Week Detail Card (appears directly above/on the clicked week) -->
+    @if (selectedWeek && popoverPosition) {
+      <div
+        class="detail-card"
+        [class.placement-top]="popoverPosition.placement === 'top'"
+        [class.placement-bottom]="popoverPosition.placement === 'bottom'"
+        [style.top.px]="popoverPosition.top"
+        [style.left.px]="popoverPosition.left"
+      >
+        <!-- Arrow pointer pointing to the week -->
+        <div
+          class="card-arrow"
+          [style.left.px]="popoverPosition.arrowOffsetLeft"
+        ></div>
+
+        <div class="detail-card-header">
+          <div class="week-pill">
+            <svg class="calendar-mini-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span>WEEK {{ selectedWeek.weekNumber }}</span>
+          </div>
+
+          <button
+            type="button"
+            class="close-btn"
+            (click)="closeCard()"
+            aria-label="Close detail card"
+          >
+            &times;
+          </button>
+        </div>
+
+        <h2 class="detail-title">One week of your life</h2>
+        <p class="detail-date">{{ formatWeekRange(selectedWeek.startDate) }}</p>
+
+        <!-- 7 Days clickable buttons strip -->
+        <div class="days-strip">
+          @for (d of selectedWeek.days; track d.dateKey) {
+            <button
+              type="button"
+              class="day-slot"
+              [class.active]="selectedDayIndex === d.dayIndex"
+              (click)="selectDay(d.dayIndex)"
+              [attr.aria-label]="d.dayName + ' ' + d.dayNumber"
+            >
+              <span class="day-name">{{ d.dayName }}</span>
+              <span class="day-number">{{ d.dayNumber }}</span>
+            </button>
+          }
+        </div>
+
+        <!-- 1, 2, 3 Activities for the Selected Day -->
+        @if (currentSelectedDay) {
+          <div class="activities-section">
+            <div class="activities-header">
+              <span class="activities-title">Top 3 for {{ currentSelectedDay.dayName }} ({{ currentSelectedDay.date | date:'MMM d' }})</span>
+            </div>
+            <div class="activity-items">
+              @for (num of [0, 1, 2]; track num) {
+                <div class="activity-row">
+                  <span class="activity-num">{{ num + 1 }}</span>
+                  <input
+                    type="text"
+                    class="activity-input"
+                    [placeholder]="activityPlaceholders[num]"
+                    [value]="getDayActivities(currentSelectedDay.dateKey)[num]"
+                    (change)="updateDayActivity(currentSelectedDay.dateKey, num, $event)"
+                  />
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <p class="detail-footer-text">
+          A small square, a whole week. What will you make of these seven days?
+        </p>
+      </div>
     }
-    <p>4000</p>
+  </main>
+</div>
